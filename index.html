@@ -271,14 +271,15 @@
 
 <!-- NAV -->
 <nav>
-  <a class="nav-logo" href="#">FANG <span>·</span> FilAct Next-Gen</a>
+  <a class="nav-logo" href="https://www.filactnextgen.com/">FANG <span>·</span> FilAct Next-Gen</a>
   <ul class="nav-links">
-    <li><a href="#">Home</a></li>
-    <li><a href="#">Registrations</a></li>
-    <li><a href="#">Photos</a></li>
-    <li><a href="#" class="active">Scoring Club</a></li>
-    <li><a href="#">Rules</a></li>
-    <li><a href="#">Contact</a></li>
+    <li><a href="https://www.filactnextgen.com/">Home</a></li>
+    <li><a href="https://www.filactnextgen.com/registrations">Registrations</a></li>
+    <li><a href="https://www.filactnextgen.com/shop">Shop</a></li>
+    <li><a href="https://www.filactnextgen.com/rules-regulations">Rules &amp; Regulations</a></li>
+    <li><a href="https://www.filactnextgen.com/theteam">The Team</a></li>
+    <li><a href="https://www.filactnextgen.com/about-us">About Us</a></li>
+    <li><a href="https://www.filactnextgen.com/contact">Contact</a></li>
   </ul>
 </nav>
 
@@ -349,18 +350,10 @@
 
   <div class="filters-bar">
     <span class="filter-label">Division</span>
-    <button class="filter-btn active" onclick="setFilter('div','all',this)">All</button>
-    <button class="filter-btn" onclick="setFilter('div','U10',this)">U10</button>
-    <button class="filter-btn" onclick="setFilter('div','U12',this)">U12</button>
-    <button class="filter-btn" onclick="setFilter('div','U14',this)">U14</button>
-    <button class="filter-btn" onclick="setFilter('div','U16',this)">U16</button>
+    <span id="div-filters"><button class="filter-btn active" onclick="setFilter('div','all',this)">All</button></span>
     <div class="filter-divider"></div>
     <span class="filter-label">Event</span>
-    <button class="filter-btn active" onclick="setFilter('event','all',this)">All</button>
-    <button class="filter-btn" onclick="setFilter('event','Tip-Off',this)">Tip-Off</button>
-    <button class="filter-btn" onclick="setFilter('event','Christmas Classic',this)">Christmas Classic</button>
-    <button class="filter-btn" onclick="setFilter('event','Crunch Time',this)">Crunch Time</button>
-    <button class="filter-btn" onclick="setFilter('event','Summertime Showdown',this)">Summertime Showdown</button>
+    <span id="event-filters"><button class="filter-btn active" onclick="setFilter('event','all',this)">All</button></span>
   </div>
 
   <!-- SPOTLIGHT TOP ENTRY -->
@@ -457,7 +450,7 @@
       <h3>Witnessed a 25+ point game?</h3>
       <p>Coaches, team managers, and parents can submit qualifying performances. Points must match the official scoresheet. Once submitted and verified, the entry is permanent.</p>
     </div>
-    <a class="cta-btn" href="mailto:filactnextgen@gmail.com?subject=FANG%20Scoring%20Club%20Submission">Submit a game</a>
+    <a class="cta-btn" href="https://docs.google.com/forms/d/e/1FAIpQLScdDuvXGd1HbwhmzwM97zMSHC3qhK0kreUmnbMw46xAzs5DGw/viewform?usp=dialog" target="_blank" rel="noopener">Submit a game</a>
   </div>
 
   <!-- FOOTER NOTE -->
@@ -470,88 +463,135 @@
 </div>
 
 <script>
-const DB = [
-  { name: "Marcus T.",  team: "Ball905 CST",     div: "U14", event: "Christmas Classic",   pts: 42, year: 2025 },
-  { name: "Jordan C.",  team: "Defenders",        div: "U14", event: "Christmas Classic",   pts: 37, year: 2025 },
-  { name: "Eli R.",     team: "Raptors Elite",    div: "U12", event: "Tip-Off",             pts: 33, year: 2025 },
-  { name: "Devon M.",   team: "JCC Warriors",     div: "U12", event: "Tip-Off",             pts: 31, year: 2025 },
-  { name: "Caleb O.",   team: "Ball905 CST",      div: "U14", event: "Crunch Time",         pts: 28, year: 2025 },
-  { name: "Aidan B.",   team: "Defenders",        div: "U14", event: "Summertime Showdown", pts: 27, year: 2025 },
-  { name: "Noah S.",    team: "Raptors Elite",    div: "U16", event: "Christmas Classic",   pts: 26, year: 2025 },
-  { name: "Liam K.",    team: "JCC Warriors",     div: "U10", event: "Crunch Time",         pts: 25, year: 2025 },
-];
+  // ─────────────────────────────────────────────
+  // CONFIGURATION — paste your values below
+  // ─────────────────────────────────────────────
+  const SHEET_ID  = 'YOUR_SHEET_ID_HERE';   // e.g. '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms'
+  const API_KEY   = 'YOUR_API_KEY_HERE';    // e.g. 'AIzaSyD...'
+  const TAB_NAME  = 'Sheet1';               // The tab name at the bottom of your Google Sheet
+  // ─────────────────────────────────────────────
 
-const filters = { div: 'all', event: 'all' };
+  let DB = [];
+  const filters = { div: 'all', event: 'all' };
 
-function tierOf(pts) {
-  if (pts >= 40) return { cls: 'tier-legend', label: 'Legend ★' };
-  if (pts >= 35) return { cls: 'tier-gold',   label: 'Gold' };
-  if (pts >= 30) return { cls: 'tier-silver', label: 'Silver' };
-  return { cls: 'tier-member', label: 'Member' };
-}
+  // ── Fetch from Google Sheets ──────────────────
+  async function loadFromSheets() {
+    const range  = encodeURIComponent(`${TAB_NAME}!A2:F1000`);
+    const url    = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?key=${API_KEY}`;
 
-function render() {
-  const data = DB
-    .filter(e => (filters.div === 'all' || e.div === filters.div) && (filters.event === 'all' || e.event === filters.event))
-    .sort((a, b) => b.pts - a.pts);
+    try {
+      const res  = await fetch(url);
+      if (!res.ok) throw new Error(`Sheets API error: ${res.status}`);
+      const json = await res.json();
+      const rows = json.values || [];
 
-  document.getElementById('stat-entries').textContent = DB.length;
-  document.getElementById('stat-legends').textContent = DB.filter(e => e.pts >= 40).length;
-  document.getElementById('stat-top').textContent = DB.reduce((m, e) => Math.max(m, e.pts), 0);
+      DB = rows
+        .filter(r => r[0] && r[4])          // must have name and pts
+        .map(r => ({
+          name:  (r[0] || '').trim(),        // Column A
+          team:  (r[1] || '').trim(),        // Column B
+          div:   (r[2] || '').trim(),        // Column C
+          event: (r[3] || '').trim(),        // Column D
+          pts:   parseInt(r[4], 10) || 0,   // Column E
+          year:  parseInt(r[5], 10) || new Date().getFullYear(), // Column F
+        }))
+        .filter(e => e.pts >= 25);           // only qualifying scores
 
-  const top = data[0];
-  if (top) {
-    document.getElementById('spot-name').textContent = top.name;
-    document.getElementById('spot-team').textContent = top.team;
-    document.getElementById('spot-div').textContent = top.div;
-    document.getElementById('spot-event').textContent = top.event;
-    document.getElementById('spot-year').textContent = top.year;
-    document.getElementById('spot-pts').textContent = top.pts;
-    document.getElementById('spotlight').style.display = '';
-  } else {
-    document.getElementById('spotlight').style.display = 'none';
+      buildDynamicFilters();
+      render();
+    } catch (err) {
+      console.error(err);
+      document.getElementById('club-body').innerHTML =
+        `<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-muted);">
+          Could not load data. Check your Sheet ID, API key, and that the sheet is shared publicly.
+        </td></tr>`;
+    }
   }
 
-  document.getElementById('entry-count').textContent = data.length + ' entr' + (data.length === 1 ? 'y' : 'ies');
+  // ── Build division & event filter buttons from live data ──
+  function buildDynamicFilters() {
+    const divs   = [...new Set(DB.map(e => e.div))].sort();
+    const events = [...new Set(DB.map(e => e.event))].sort();
 
-  const body = document.getElementById('club-body');
-  body.innerHTML = data.map((e, i) => {
-    const tier = tierOf(e.pts);
-    return `<tr class="${tier.cls}" style="animation-delay:${i * 0.04}s">
-      <td class="row-rank">${i + 1}</td>
-      <td>
-        <div class="row-player-name">${e.name}</div>
-        <div class="row-player-team">${e.team}</div>
-      </td>
-      <td><span class="row-pill pill-div">${e.div}</span></td>
-      <td><span class="row-pill pill-event">${e.event} '${String(e.year).slice(2)}</span></td>
-      <td class="row-pts-cell">
-        <div class="row-pts-num">${e.pts}</div>
-        <div class="row-tier-label">${tier.label}</div>
-      </td>
-    </tr>`;
-  }).join('');
-}
+    const divBar = document.getElementById('div-filters');
+    divBar.innerHTML = `<button class="filter-btn active" onclick="setFilter('div','all',this)">All</button>` +
+      divs.map(d => `<button class="filter-btn" onclick="setFilter('div','${d}',this)">${d}</button>`).join('');
 
-function setFilter(key, val, btn) {
-  filters[key] = val;
-  const group = btn.parentElement.querySelectorAll('.filter-btn');
-  let inGroup = false;
-  group.forEach(b => {
-    if (b === btn) inGroup = true;
-    if (inGroup) { }
-  });
-  btn.closest('.filters-bar').querySelectorAll('.filter-btn').forEach(b => {
-    if (b.closest('.filters-bar') === btn.closest('.filters-bar')) {
-      const otherKey = b.getAttribute('onclick').match(/setFilter\('(\w+)'/)[1];
-      if (otherKey === key) b.classList.remove('active');
+    const evtBar = document.getElementById('event-filters');
+    evtBar.innerHTML = `<button class="filter-btn active" onclick="setFilter('event','all',this)">All</button>` +
+      events.map(e => `<button class="filter-btn" onclick="setFilter('event','${CSS.escape(e)}',this)">${e}</button>`).join('');
+  }
+
+  // ── Tier helper ───────────────────────────────
+  function tierOf(pts) {
+    if (pts >= 40) return { cls: 'tier-legend', label: 'Legend ★' };
+    if (pts >= 35) return { cls: 'tier-gold',   label: 'Gold' };
+    if (pts >= 30) return { cls: 'tier-silver', label: 'Silver' };
+    return { cls: 'tier-member', label: 'Member' };
+  }
+
+  // ── Render leaderboard ────────────────────────
+  function render() {
+    const data = DB
+      .filter(e => (filters.div   === 'all' || e.div   === filters.div) &&
+                   (filters.event === 'all' || e.event === filters.event))
+      .sort((a, b) => b.pts - a.pts);
+
+    document.getElementById('stat-entries').textContent = DB.length;
+    document.getElementById('stat-legends').textContent = DB.filter(e => e.pts >= 40).length;
+    document.getElementById('stat-top').textContent     = DB.length ? DB.reduce((m, e) => Math.max(m, e.pts), 0) : 0;
+
+    const top = data[0];
+    if (top) {
+      document.getElementById('spot-name').textContent  = top.name;
+      document.getElementById('spot-team').textContent  = top.team;
+      document.getElementById('spot-div').textContent   = top.div;
+      document.getElementById('spot-event').textContent = top.event;
+      document.getElementById('spot-year').textContent  = top.year;
+      document.getElementById('spot-pts').textContent   = top.pts;
+      document.getElementById('spotlight').style.display = '';
+    } else {
+      document.getElementById('spotlight').style.display = 'none';
     }
-  });
-  btn.classList.add('active');
-  render();
-}
 
-render();
+    document.getElementById('entry-count').textContent =
+      data.length + ' entr' + (data.length === 1 ? 'y' : 'ies');
+
+    const body = document.getElementById('club-body');
+    if (!data.length) {
+      body.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-muted);">No entries match this filter.</td></tr>`;
+      return;
+    }
+
+    body.innerHTML = data.map((e, i) => {
+      const tier = tierOf(e.pts);
+      return `<tr class="${tier.cls}" style="animation-delay:${i * 0.04}s">
+        <td class="row-rank">${i + 1}</td>
+        <td>
+          <div class="row-player-name">${e.name}</div>
+          <div class="row-player-team">${e.team}</div>
+        </td>
+        <td><span class="row-pill pill-div">${e.div}</span></td>
+        <td><span class="row-pill pill-event">${e.event} '${String(e.year).slice(2)}</span></td>
+        <td class="row-pts-cell">
+          <div class="row-pts-num">${e.pts}</div>
+          <div class="row-tier-label">${tier.label}</div>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Filter button logic ───────────────────────
+  function setFilter(key, val, btn) {
+    filters[key] = val;
+    const bar = key === 'div' ? document.getElementById('div-filters') : document.getElementById('event-filters');
+    bar.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  }
+
+  // ── Init ──────────────────────────────────────
+  loadFromSheets();
 </script>
 </body>
 </html>
